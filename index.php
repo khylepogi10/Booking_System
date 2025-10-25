@@ -106,33 +106,39 @@ include 'db.php'; // Connect to database
 
   <?php
   // ✅ Correct query
-  $result = $conn->query("SELECT * FROM events ORDER BY date ASC");
+  $result = $conn->query("SELECT * FROM events WHERE seats > 0 ORDER BY date ASC");
 
   if ($result && $result->num_rows > 0):
   ?>
   <table>
     <tr>
+      <th>Image</th>
       <th>Event Name</th>
-      <th>Date & Time</th>
+      <th>Date</th>
       <th>Location</th>
+      <th>Price</th>
       <th>Seats Left</th>
       <th>Action</th>
     </tr>
     <?php while ($row = $result->fetch_assoc()): ?>
     <tr>
+      <td>
+        <?php if ($row['image']): ?>
+          <img src="uploads/<?= htmlspecialchars($row['image']) ?>" alt="Event" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px;">
+        <?php else: ?>
+          <div style="width: 60px; height: 60px; background: #ecf0f1; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #95a5a6; font-size: 12px;">No Image</div>
+        <?php endif; ?>
+      </td>
       <td><?= htmlspecialchars($row['event_name']) ?></td>
       <td><?= htmlspecialchars($row['date']) ?></td>
       <td><?= htmlspecialchars($row['location']) ?></td>
+      <td><strong style="color: #27ae60;">$<?= number_format($row['price'], 2) ?></strong></td>
       <td><?= htmlspecialchars($row['seats']) ?></td>
       <td>
-        <?php if ($row['seats'] > 0): ?>
-          <?php if (isset($_SESSION['user_id'])): ?>
-            <a href="user/book_event.php?id=<?= $row['id'] ?>" class="btn">Book Now</a>
-          <?php else: ?>
-            <a href="login.php" class="btn">Login to Book</a>
-          <?php endif; ?>
+        <?php if (isset($_SESSION['user_id'])): ?>
+          <a href="user/book_event.php?id=<?= $row['id'] ?>" class="btn">Book Now</a>
         <?php else: ?>
-          <span style="color:red;">Sold Out</span>
+          <a href="login.php" class="btn">Login to Book</a>
         <?php endif; ?>
       </td>
     </tr>

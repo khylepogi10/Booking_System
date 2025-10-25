@@ -12,7 +12,14 @@ if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) >
 }
 $_SESSION['last_activity'] = time();
 
-if (isset($_POST['add'])) {
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    header("Location: dashboard.php");
+    exit;
+}
+
+$event_id = intval($_GET['id']);
+
+if (isset($_POST['update'])) {
     $event_name = trim($_POST['event_name']);
     $description = trim($_POST['description']);
     $date = $_POST['date'];
@@ -20,7 +27,7 @@ if (isset($_POST['add'])) {
     $seats = intval($_POST['seats']);
     $price = floatval($_POST['price']);
 
-    $image = null;
+    $image = $_POST['current_image'];
     if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
         $allowed = ['jpg', 'jpeg', 'png', 'gif'];
         $filename = $_FILES['image']['name'];
@@ -31,20 +38,34 @@ if (isset($_POST['add'])) {
             $upload_path = '../uploads/' . $newname;
 
             if (move_uploaded_file($_FILES['image']['tmp_name'], $upload_path)) {
+                if ($image && file_exists('../uploads/' . $image)) {
+                    unlink('../uploads/' . $image);
+                }
                 $image = $newname;
             }
         }
     }
 
-    $stmt = $conn->prepare("INSERT INTO events (event_name, description, date, location, seats, price, image) VALUES (?,?,?,?,?,?,?)");
-    $stmt->bind_param("ssssids", $event_name, $description, $date, $location, $seats, $price, $image);
+    $stmt = $conn->prepare("UPDATE events SET event_name=?, description=?, date=?, location=?, seats=?, price=?, image=? WHERE id=?");
+    $stmt->bind_param("ssssidsi", $event_name, $description, $date, $location, $seats, $price, $image, $event_id);
 
     if ($stmt->execute()) {
-        echo "<script>alert('Event added successfully'); window.location='dashboard.php';</script>";
+        echo "<script>alert('Event updated successfully'); window.location='dashboard.php';</script>";
     } else {
-        echo "<script>alert('Error adding event');</script>";
+        echo "<script>alert('Error updating event');</script>";
     }
     $stmt->close();
+}
+
+$stmt = $conn->prepare("SELECT * FROM events WHERE id = ?");
+$stmt->bind_param("i", $event_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$event = $result->fetch_assoc();
+
+if (!$event) {
+    header("Location: dashboard.php");
+    exit;
 }
 ?>
 <!DOCTYPE html>
@@ -52,7 +73,7 @@ if (isset($_POST['add'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Event</title>
+    <title>Edit Event</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -133,49 +154,60 @@ if (isset($_POST['add'])) {
         .back-link:hover {
             text-decoration: underline;
         }
+        .current-image {
+            margin-top: 10px;
+            max-width: 200px;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="dashboard.php" class="back-link">← Back to Dashboard</a>
-        <h2>Add New Event</h2>
+        <h2>Edit Event</h2>
         <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="current_image" value="<?= htmlspecialchars($event['image']) ?>">
+
             <div class="form-group">
                 <label>Event Name *</label>
-                <input type="text" name="event_name" required>
+                <input type="text" name="event_name" value="<?= htmlspecialchars($event['event_name']) ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Description</label>
-                <textarea name="description" placeholder="Enter event details..."></textarea>
+                <textarea name="description"><?= htmlspecialchars($event['description']) ?></textarea>
             </div>
 
             <div class="form-group">
                 <label>Date *</label>
-                <input type="date" name="date" required>
+                <input type="date" name="date" value="<?= htmlspecialchars($event['date']) ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Location *</label>
-                <input type="text" name="location" required>
+                <input type="text" name="location" value="<?= htmlspecialchars($event['location']) ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Available Seats *</label>
-                <input type="number" name="seats" min="1" required>
+                <input type="number" name="seats" min="0" value="<?= htmlspecialchars($event['seats']) ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Price (USD) *</label>
-                <input type="number" name="price" step="0.01" min="0" value="0.00" required>
+                <input type="number" name="price" step="0.01" min="0" value="<?= htmlspecialchars($event['price']) ?>" required>
             </div>
 
             <div class="form-group">
                 <label>Event Image</label>
+                <?php if ($event['image']): ?>
+                    <img src="../uploads/<?= htmlspecialchars($event['image']) ?>" alt="Current Image" class="current-image">
+                    <p style="color: #666; font-size: 14px; margin-top: 5px;">Upload a new image to replace the current one</p>
+                <?php endif; ?>
                 <input type="file" name="image" accept="image/*">
             </div>
 
-            <button type="submit" name="add" class="btn">Add Event</button>
+            <button type="submit" name="update" class="btn">Update Event</button>
         </form>
     </div>
 </body>

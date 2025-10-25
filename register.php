@@ -7,7 +7,7 @@ if (isset($_POST['register'])) {
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     // Check if email already exists
-    $check = $conn->prepare("SELECT id FROM tbl_user WHERE email = ?");
+    $check = $conn->prepare("SELECT id FROM users WHERE email = ?");
     $check->bind_param("s", $email);
     $check->execute();
     $check->store_result();
@@ -15,7 +15,7 @@ if (isset($_POST['register'])) {
     if ($check->num_rows > 0) {
         echo "<script>alert('Email already exists.');</script>";
     } else {
-        $stmt = $conn->prepare("INSERT INTO tbl_user (name, email, password) VALUES (?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO users (name, email, password) VALUES (?, ?, ?)");
         $stmt->bind_param("sss", $name, $email, $password);
 
         if ($stmt->execute()) {
